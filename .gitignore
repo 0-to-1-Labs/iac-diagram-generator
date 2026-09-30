@@ -39,3 +39,6 @@ test_*.yaml
 test_*.tf
 test_*.json
 /tmp/
+
+# Local dev environment
+.venv/

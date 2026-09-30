@@ -1,0 +1,36 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  DBPassword:
+    Type: String
+    NoEcho: true
+    Default: hunter2-param
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+  Subnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+  SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      VpcId: !GetAtt VPC.VpcId
+      GroupDescription: !Sub "sg-${VPC}-${AWS::Region}"
+  Inst:
+    Type: AWS::EC2::Instance
+    Properties:
+      SubnetId: !Ref Subnet
+      SecurityGroupIds:
+        - !GetAtt [SG, GroupId]
+      UserData: !Base64
+        Fn::Sub: "#!/bin/bash\necho ${Subnet}"
+  DB:
+    Type: AWS::RDS::DBInstance
+    DependsOn: Subnet
+    Properties:
+      MasterUserPassword: literal-db-secret
+      VPCSecurityGroups:
+        - !GetAtt SG.GroupId

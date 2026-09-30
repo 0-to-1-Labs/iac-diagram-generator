@@ -1,7 +1,7 @@
 # Example Nano Banana Pro Prompts
 
 Use these as references for tone, structure, and level of detail. Adapt the zones
-and resources to the parsed architecture. See `visual-style.md` for the full
+and resources to the parsed architecture. See `visual-style.md` (next to this file, under `references/`) for the full
 design system these prompts follow.
 
 ## Three-Tier Web Application

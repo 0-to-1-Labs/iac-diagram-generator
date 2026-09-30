@@ -1,0 +1,5 @@
+# Python 3.10+ (google-genai and tfparse require it).
+# Floor-only ranges: the plugin tracks the latest client libraries.
+pyyaml>=6.0
+# image_config.image_size (1K/2K/4K) first shipped in google-genai 1.35.0.
+google-genai>=1.35
