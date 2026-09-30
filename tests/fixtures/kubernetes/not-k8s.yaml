@@ -1,0 +1,5 @@
+# A CloudFormation template in a k8s directory: no apiVersion/kind.
+AWSTemplateFormatVersion: "2010-09-09"
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC

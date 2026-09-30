@@ -1,0 +1,65 @@
+# Not a Kubernetes object (Helm values style); must be skipped.
+image: nginx
+replicas: 2
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources: [app.yaml]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: prod
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: api}
+  template:
+    metadata:
+      labels: {app: api}
+    spec:
+      serviceAccountName: api-sa
+      initContainers:
+        - name: migrate
+          image: registry/api:1
+          envFrom:
+            - secretRef: {name: migrate-secret}
+      containers:
+        - name: api
+          image: registry/api:1
+          envFrom:
+            - configMapRef: {name: api-config}
+            - secretRef: {name: api-secret}
+          env:
+            - name: DB_PASSWORD
+              value: "hunter2"
+            - name: DB_URL
+              valueFrom:
+                secretKeyRef: {name: db-cred, key: url}
+            - name: LOG_LEVEL
+              valueFrom:
+                configMapKeyRef: {name: api-config, key: level}
+      volumes:
+        - name: cfg
+          configMap: {name: api-config}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: prod
+spec:
+  selector: {app: api}
+  ports: [{port: 80}]
+---
+apiVersion: v1
+kind: List
+items:
+  - apiVersion: v1
+    kind: Secret
+    metadata: {name: api-secret, namespace: prod}
+    stringData: {token: abc}
+  - apiVersion: v1
+    kind: ServiceAccount
+    metadata: {name: api-sa, namespace: prod}

@@ -1,0 +1,21 @@
+services:
+  web:
+    image: nginx:latest
+    ports: ["80:80"]
+    environment:
+      - API_KEY=sk-prod-1234567890abcdef
+      - APP_MODE=production
+    depends_on: [db]
+    networks: [backend]
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_PASSWORD: hunter2-prod
+      POSTGRES_DB: app
+    volumes: [pgdata:/var/lib/postgresql/data]
+    networks:
+      backend: {}
+networks:
+  backend: {}
+volumes:
+  pgdata: {}
