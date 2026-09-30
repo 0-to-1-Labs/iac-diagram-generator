@@ -4,7 +4,7 @@
 #
 # RECOMMENDED instead: install as a plugin via the marketplace —
 #   /plugin marketplace add 0-to-1-Labs/claude-marketplace
-#   /plugin install iac-diagram-generator@0to1-labs
+#   /plugin install iac-diagram-generator@0-to-1-labs
 
 set -e
 

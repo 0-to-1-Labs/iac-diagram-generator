@@ -11,7 +11,7 @@ In Claude Code:
 
 ```
 /plugin marketplace add 0-to-1-Labs/claude-marketplace
-/plugin install iac-diagram-generator@0to1-labs
+/plugin install iac-diagram-generator@0-to-1-labs
 ```
 
 Then set a Gemini API key (used for diagram rendering):
