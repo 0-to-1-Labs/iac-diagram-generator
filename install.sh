@@ -5,16 +5,54 @@
 # RECOMMENDED instead: install as a plugin via the marketplace —
 #   /plugin marketplace add 0-to-1-Labs/claude-marketplace
 #   /plugin install iac-diagram-generator@0-to-1-labs
+#
+# Source: https://github.com/0-to-1-Labs/iac-diagram-generator
+#
+# Usage: ./install.sh [--optional-parsers]
+#   --optional-parsers  also install python-hcl2, tfparse and cfn-lint into
+#                       the plugin's private Python environment.
 
 set -e
 
 SKILL_NAME="iac-diagram-generator"
 SKILL_DIR="$HOME/.claude/skills/$SKILL_NAME"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WITH_OPTIONAL=0
+
+for arg in "$@"; do
+    case "$arg" in
+        --optional-parsers) WITH_OPTIONAL=1 ;;
+        -h|--help)
+            sed -n '2,13p' "$0" | sed 's/^# \{0,1\}//'
+            exit 0
+            ;;
+        *) echo "Unknown option: $arg"; exit 1 ;;
+    esac
+done
 
 echo "=========================================="
 echo "IaC Diagram Generator Installer"
 echo "=========================================="
+echo
+
+# Check Python version first: nothing is copied if it cannot run.
+echo "Checking Python installation..."
+if ! command -v python3 &> /dev/null; then
+    echo "ERROR: python3 is not installed."
+    echo "Please install Python 3.10 or newer and try again."
+    exit 1
+fi
+
+PYTHON_VERSION=$(python3 --version | cut -d' ' -f2)
+if ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 10) else 1)'; then
+    echo "ERROR: Python 3.10+ is required (google-genai and tfparse need it). Found $PYTHON_VERSION."
+    exit 1
+fi
+if ! python3 -c 'import venv' 2>/dev/null; then
+    echo "ERROR: the Python 'venv' module is missing (on Debian/Ubuntu: sudo apt install python3-venv)."
+    exit 1
+fi
+echo "Found Python $PYTHON_VERSION"
 echo
 
 # Check if Claude Code skills directory exists
@@ -36,7 +74,9 @@ if [ -d "$SKILL_DIR" ]; then
     rm -rf "$SKILL_DIR"
 fi
 
-# Copy skill files (the skill lives under skills/iac-diagram-generator/)
+# Copy skill files (the skill lives under skills/iac-diagram-generator/).
+# SKILL.md references its scripts through ${CLAUDE_SKILL_DIR}, which Claude
+# Code substitutes for personal skills too, so the copied layout just works.
 echo "Installing skill files to $SKILL_DIR..."
 mkdir -p "$SKILL_DIR"
 cp -r "$SCRIPT_DIR/skills/$SKILL_NAME/." "$SKILL_DIR/"
@@ -44,71 +84,18 @@ cp -r "$SCRIPT_DIR/skills/$SKILL_NAME/." "$SKILL_DIR/"
 # Make scripts executable
 chmod +x "$SKILL_DIR"/scripts/*.py
 
-# Check Python version
+# Python dependencies live in a private virtual environment, created by the
+# scripts on first run. Without a plugin data directory they use
+# ~/.cache/claude-iac-diagram-generator/venv. Nothing touches the system Python.
 echo
-echo "Checking Python installation..."
-if ! command -v python3 &> /dev/null; then
-    echo "ERROR: python3 is not installed."
-    echo "Please install Python 3 and try again."
-    exit 1
-fi
-
-PYTHON_VERSION=$(python3 --version | cut -d' ' -f2)
-echo "Found Python $PYTHON_VERSION"
-
-# Install Python dependencies
-echo
-echo "Installing Python dependencies..."
-echo "Required: pyyaml"
-echo "Optional: python-hcl2 (better Terraform parsing)"
-echo "Optional: tfparse (best Terraform parsing, requires terraform init)"
-echo "Optional: cfn-lint (better CloudFormation parsing)"
-
-# Function to install a package
-install_package() {
-    local package=$1
-    local optional=$2
-
-    if python3 -m pip install "$package" --quiet 2>/dev/null; then
-        echo "  ✓ $package installed"
-        return 0
-    elif python3 -m pip install "$package" --user --quiet 2>/dev/null; then
-        echo "  ✓ $package installed (user)"
-        return 0
-    elif python3 -m pip install "$package" --break-system-packages --quiet 2>/dev/null; then
-        echo "  ✓ $package installed (system)"
-        return 0
-    else
-        if [ "$optional" = "optional" ]; then
-            echo "  ⚠ $package not installed (optional)"
-        else
-            echo "  ✗ $package failed to install"
-        fi
-        return 1
-    fi
-}
-
-echo
-# Required
-install_package "pyyaml" "required" || {
-    echo "WARNING: Could not install pyyaml automatically."
-    echo "Please install manually: pip install pyyaml"
-}
-
-# Optional - better Terraform parsing
-install_package "python-hcl2" "optional"
-
-# Optional - best Terraform parsing (requires Python 3.10+)
-PYTHON_MINOR=$(python3 -c 'import sys; print(sys.version_info.minor)')
-if [ "$PYTHON_MINOR" -ge 10 ]; then
-    install_package "tfparse" "optional"
+if [ "$WITH_OPTIONAL" -eq 1 ]; then
+    echo "Creating the Python environment with the optional parser tiers..."
+    python3 "$SKILL_DIR/scripts/parse_iac.py" --install-optional
 else
-    echo "  ⚠ tfparse skipped (requires Python 3.10+, you have 3.$PYTHON_MINOR)"
+    echo "Python dependencies (pyyaml, google-genai) are installed on first run into"
+    echo "  $HOME/.cache/claude-iac-diagram-generator/venv"
+    echo "Re-run with --optional-parsers to add python-hcl2, tfparse and cfn-lint now."
 fi
-
-# Optional - better CloudFormation parsing
-install_package "cfn-lint" "optional"
-
 echo
 
 # Check for GEMINI_API_KEY
